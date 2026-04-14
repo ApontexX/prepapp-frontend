@@ -1,16 +1,47 @@
-# React + Vite
+# PrepApp — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interfaz de usuario desarrollada con React para la aplicación PrepApp, una plataforma de organización de apuntes con inteligencia artificial.
 
-Currently, two official plugins are available:
+## Tecnologías
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 18
+- Vite
+- React Router DOM
+- Axios
 
-## React Compiler
+## Funcionalidades
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Inicio de sesión y registro de usuarios
+- Dashboard con sidebar de carpetas
+- Crear, visualizar y eliminar carpetas
+- Crear, visualizar y eliminar bloques de apuntes
+- Autenticación con JWT — token guardado en localStorage
+- Comunicación con el backend via API REST
 
-## Expanding the ESLint configuration
+## Estructura del proyecto
+src/
+├── pages/          # Vistas principales (Login, Register, Dashboard)
+├── components/     # Componentes reutilizables
+└── services/       # Comunicación con la API (auth, folders, blocks)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Configuración
+
+1. Clona el repositorio
+2. Instala las dependencias:
+
+```bash
+npm install
+```
+
+3. Asegúrate de que el backend esté corriendo en `http://localhost:8080`
+4. Inicia el servidor de desarrollo:
+
+```bash
+npm run dev
+```
+
+5. Abre el navegador en `http://localhost:5173`
+
+## Backend
+
+El backend de esta aplicación está disponible en [prepapp](https://github.com/tuUsuario/prepapp)
