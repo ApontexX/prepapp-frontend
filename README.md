@@ -44,4 +44,4 @@ npm run dev
 
 ## Backend
 
-El backend de esta aplicación está disponible en [prepapp](https://github.com/tuUsuario/prepapp)
+El backend de esta aplicación está disponible en [prepapp](https://github.com/ApontexX/prepapp)
