@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getFolders, createFolder, deleteFolder } from '../services/folderService';
-import { getBlocks, createBlock, deleteBlock } from '../services/blockService';
+import { getFolders, createFolder, deleteFolder, updateFolder } from '../services/folderService';
+import { getBlocks, createBlock, deleteBlock, updateBlock } from '../services/blockService';
 import { logout } from '../services/authService';
 
 export default function Dashboard() {
@@ -13,15 +13,15 @@ export default function Dashboard() {
   const [newBlockContent, setNewBlockContent] = useState('');
   const [showFolderForm, setShowFolderForm] = useState(false);
   const [showBlockForm, setShowBlockForm] = useState(false);
+  const [editingBlock, setEditingBlock] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editingFolder, setEditingFolder] = useState(null);
+  const [editFolderName, setEditFolderName] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadFolders();
-  }, []);
-
-  useEffect(() => {
-    if (selectedFolder) loadBlocks(selectedFolder.id);
-  }, [selectedFolder]);
+  useEffect(() => { loadFolders(); }, []);
+  useEffect(() => { if (selectedFolder) loadBlocks(selectedFolder.id); }, [selectedFolder]);
 
   const loadFolders = async () => {
     try {
@@ -66,6 +66,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleEditFolder = (folder, e) => {
+    e.stopPropagation();
+    setEditingFolder(folder.id);
+    setEditFolderName(folder.name);
+  };
+
+  const handleSaveFolder = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await updateFolder(id, editFolderName, '');
+      setEditingFolder(null);
+      if (selectedFolder?.id === id) {
+        setSelectedFolder(prev => ({ ...prev, name: editFolderName }));
+      }
+      loadFolders();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCreateBlock = async (e) => {
     e.preventDefault();
     try {
@@ -88,6 +108,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleEditBlock = (block) => {
+    setEditingBlock(block.id);
+    setEditTitle(block.title);
+    setEditContent(block.content);
+  };
+
+  const handleSaveBlock = async (id) => {
+    try {
+      await updateBlock(id, editTitle, editContent);
+      setEditingBlock(null);
+      loadBlocks(selectedFolder.id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -95,7 +131,6 @@ export default function Dashboard() {
 
   return (
     <div style={styles.container}>
-      {/* Sidebar */}
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <h2 style={styles.logo}>PrepApp</h2>
@@ -131,17 +166,42 @@ export default function Dashboard() {
               onClick={() => setSelectedFolder(folder)}
             >
               <span style={styles.folderIcon}>📁</span>
-              <span style={styles.folderName}>{folder.name}</span>
-              <button
-                style={styles.deleteBtn}
-                onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-              >×</button>
+              {editingFolder === folder.id ? (
+                <>
+                  <input
+                    style={{ ...styles.inlineInput, margin: 0, flex: 1 }}
+                    value={editFolderName}
+                    onChange={(e) => setEditFolderName(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                  <button
+                    style={{ ...styles.inlineBtn, width: 'auto', padding: '2px 8px', marginLeft: '4px' }}
+                    onClick={(e) => handleSaveFolder(folder.id, e)}
+                  >✓</button>
+                  <button
+                    style={styles.deleteBtn}
+                    onClick={(e) => { e.stopPropagation(); setEditingFolder(null); }}
+                  >×</button>
+                </>
+              ) : (
+                <>
+                  <span style={styles.folderName}>{folder.name}</span>
+                  <button
+                    style={styles.editBtn}
+                    onClick={(e) => handleEditFolder(folder, e)}
+                  >✏️</button>
+                  <button
+                    style={styles.deleteBtn}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                  >×</button>
+                </>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Main content */}
       <div style={styles.main}>
         {selectedFolder ? (
           <>
@@ -175,11 +235,43 @@ export default function Dashboard() {
             <div style={styles.blocksGrid}>
               {blocks.map(block => (
                 <div key={block.id} style={styles.blockCard}>
-                  <div style={styles.blockHeader}>
-                    <h3 style={styles.blockTitle}>{block.title}</h3>
-                    <button style={styles.deleteBtn} onClick={() => handleDeleteBlock(block.id)}>×</button>
-                  </div>
-                  <p style={styles.blockContent}>{block.content}</p>
+                  {editingBlock === block.id ? (
+                    <>
+                      <input
+                        style={styles.blockInput}
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                      />
+                      <textarea
+                        style={styles.blockTextarea}
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        rows={4}
+                      />
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <button style={styles.createBlockBtn} onClick={() => handleSaveBlock(block.id)}>
+                          Guardar
+                        </button>
+                        <button
+                          style={{ ...styles.createBlockBtn, backgroundColor: '#999' }}
+                          onClick={() => setEditingBlock(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={styles.blockHeader}>
+                        <h3 style={styles.blockTitle}>{block.title}</h3>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button style={styles.editBtn} onClick={() => handleEditBlock(block)}>✏️</button>
+                          <button style={styles.deleteBtn} onClick={() => handleDeleteBlock(block.id)}>×</button>
+                        </div>
+                      </div>
+                      <p style={styles.blockContent}>{block.content}</p>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -226,4 +318,5 @@ const styles = {
   blockContent: { fontSize: '14px', color: '#555', lineHeight: '1.6', margin: 0 },
   emptyState: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' },
   emptyText: { fontSize: '16px', color: '#888' },
+  editBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '0 4px' },
 };
