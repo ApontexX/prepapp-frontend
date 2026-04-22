@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getFolders, createFolder, deleteFolder, updateFolder } from '../services/folderService';
 import { getBlocks, createBlock, deleteBlock, updateBlock } from '../services/blockService';
 import { logout } from '../services/authService';
+import { analyzeFolder, chatWithAI } from '../services/aiService';
 
 export default function Dashboard() {
   const [folders, setFolders] = useState([]);
@@ -19,6 +20,12 @@ export default function Dashboard() {
   const [editingFolder, setEditingFolder] = useState(null);
   const [editFolderName, setEditFolderName] = useState('');
   const navigate = useNavigate();
+  const [context, setContext] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [chatQuestion, setChatQuestion] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [activeAITab, setActiveAITab] = useState('analyze');
 
   useEffect(() => { loadFolders(); }, []);
   useEffect(() => { if (selectedFolder) loadBlocks(selectedFolder.id); }, [selectedFolder]);
@@ -124,6 +131,35 @@ export default function Dashboard() {
     }
   };
 
+  const handleAnalyze = async () => {
+  setLoadingAI(true);
+  setAiResponse('');
+  try {
+    const data = await analyzeFolder(selectedFolder.id, context);
+    setAiResponse(data.response);
+  } catch (err) {
+    setAiResponse('Error al conectar con la IA. Intenta de nuevo.');
+  } finally {
+    setLoadingAI(false);
+  }
+};
+
+const handleChat = async (e) => {
+  e.preventDefault();
+  if (!chatQuestion.trim()) return;
+  setLoadingAI(true);
+  setAiResponse('');
+  try {
+    const data = await chatWithAI(selectedFolder.id, chatQuestion, context);
+    setAiResponse(data.response);
+    setChatQuestion('');
+  } catch (err) {
+    setAiResponse('Error al conectar con la IA. Intenta de nuevo.');
+  } finally {
+    setLoadingAI(false);
+  }
+};
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -206,12 +242,80 @@ export default function Dashboard() {
         {selectedFolder ? (
           <>
             <div style={styles.mainHeader}>
-              <h2 style={styles.folderTitle}>{selectedFolder.name}</h2>
-              <button style={styles.newBlockBtn} onClick={() => setShowBlockForm(!showBlockForm)}>
-                + Nuevo bloque
-              </button>
-            </div>
-
+  <h2 style={styles.folderTitle}>{selectedFolder.name}</h2>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <button style={styles.newBlockBtn} onClick={() => setShowBlockForm(!showBlockForm)}>
+      + Nuevo bloque
+    </button>
+    <button
+      style={{ ...styles.newBlockBtn, backgroundColor: showAIPanel ? '#7c3aed' : '#059669' }}
+      onClick={() => setShowAIPanel(!showAIPanel)}
+    >
+      🤖 {showAIPanel ? 'Cerrar IA' : 'Preparar con IA'}
+    </button>
+  </div>
+</div>
+            {showAIPanel && (
+  <div style={styles.aiPanel}>
+    <div style={styles.aiTabs}>
+      <button
+        style={{ ...styles.aiTab, borderBottom: activeAITab === 'analyze' ? '2px solid #4f46e5' : 'none', color: activeAITab === 'analyze' ? '#4f46e5' : '#888' }}
+        onClick={() => setActiveAITab('analyze')}
+      >
+        📊 Analizar carpeta
+      </button>
+      <button
+        style={{ ...styles.aiTab, borderBottom: activeAITab === 'chat' ? '2px solid #4f46e5' : 'none', color: activeAITab === 'chat' ? '#4f46e5' : '#888' }}
+        onClick={() => setActiveAITab('chat')}
+      >
+        💬 Hacer pregunta
+      </button>
+    </div>
+    <div style={styles.aiContent}>
+      <div style={styles.contextSection}>
+        <label style={styles.label}>Contexto de la oportunidad (opcional)</label>
+        <textarea
+          style={styles.blockTextarea}
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          placeholder="Ej: Entrevista para Google como desarrollador backend, empresa fintech enfocada en pagos, exposición sobre machine learning..."
+          rows={2}
+        />
+      </div>
+      {activeAITab === 'analyze' ? (
+        <button
+          style={{ ...styles.newBlockBtn, backgroundColor: '#059669', opacity: loadingAI ? 0.7 : 1 }}
+          onClick={handleAnalyze}
+          disabled={loadingAI}
+        >
+          {loadingAI ? '⏳ Analizando...' : '🔍 Analizar mis apuntes'}
+        </button>
+      ) : (
+        <form onSubmit={handleChat} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            style={{ ...styles.blockInput, flex: 1, margin: 0 }}
+            value={chatQuestion}
+            onChange={(e) => setChatQuestion(e.target.value)}
+            placeholder="Ej: ¿Qué debo decir cuando me pregunten por mis debilidades?"
+            disabled={loadingAI}
+          />
+          <button
+            style={{ ...styles.newBlockBtn, backgroundColor: '#059669', opacity: loadingAI ? 0.7 : 1 }}
+            type="submit"
+            disabled={loadingAI}
+          >
+            {loadingAI ? '⏳' : 'Preguntar'}
+          </button>
+        </form>
+      )}
+      {aiResponse && (
+        <div style={styles.aiResponse}>
+          <pre style={styles.aiResponseText}>{aiResponse}</pre>
+        </div>
+      )}
+    </div>
+  </div>
+)}
             {showBlockForm && (
               <form onSubmit={handleCreateBlock} style={styles.blockForm}>
                 <input
@@ -319,4 +423,12 @@ const styles = {
   emptyState: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' },
   emptyText: { fontSize: '16px', color: '#888' },
   editBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '0 4px' },
+  aiPanel: { backgroundColor: 'white', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e0e7ff' },
+aiTabs: { display: 'flex', gap: '0', marginBottom: '1rem', borderBottom: '1px solid #eee' },
+aiTab: { padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+aiContent: { display: 'flex', flexDirection: 'column', gap: '12px' },
+contextSection: { display: 'flex', flexDirection: 'column', gap: '6px' },
+label: { fontSize: '13px', fontWeight: '500', color: '#555' },
+aiResponse: { backgroundColor: '#f8f8ff', borderRadius: '8px', padding: '1rem', border: '1px solid #e0e7ff', maxHeight: '400px', overflowY: 'auto' },
+aiResponseText: { fontSize: '13px', lineHeight: '1.7', color: '#333', whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'inherit' },
 };
